@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blackjack</title>
+    <meta name="description" content="Play Blackjack in your browser, dealt from a 6-deck shoe by the Deck of Cards API." />
+    <link rel="icon" href="https://deckofcardsapi.com/static/img/favicon/favicon-32x32.png" />
+    <link rel="preconnect" href="https://deckofcardsapi.com" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="module" src="js/main.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Blackjack</h1>
+      <dl class="stats">
+        <div>
+          <dt>Bankroll</dt>
+          <dd id="bankroll">$0</dd>
+        </div>
+        <div>
+          <dt>Shoe</dt>
+          <dd id="shoe-remaining">—</dd>
+        </div>
+      </dl>
+    </header>
+
+    <main class="table">
+      <section class="seat dealer" aria-label="Dealer">
+        <div class="seat-head">
+          <h2>Dealer</h2>
+          <span id="dealer-total" class="badge"></span>
+        </div>
+        <div id="dealer-cards" class="cards"></div>
+      </section>
+
+      <div class="rules-strip">Blackjack pays 3 to 2 · Dealer stands on all 17s</div>
+
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+
+      <section class="seat player" aria-label="Your hands">
+        <h2 class="visually-hidden">You</h2>
+        <div id="player-hands" class="hands"></div>
+      </section>
+    </main>
+
+    <footer class="controls">
+      <div id="betting-controls" class="control-row">
+        <div class="chips" role="group" aria-label="Add chips to your bet">
+          <button class="chip" data-chip="5" style="--chip: #e9e4d8; --ink: #222">5</button>
+          <button class="chip" data-chip="25" style="--chip: #c2362f">25</button>
+          <button class="chip" data-chip="100" style="--chip: #1f2a36">100</button>
+          <button class="chip" data-chip="500" style="--chip: #6b3fa0">500</button>
+        </div>
+        <div class="bet-box">
+          <span class="bet-label">Bet</span>
+          <span id="current-bet" class="bet-amount">$0</span>
+        </div>
+        <div class="actions">
+          <button id="clear-bet" class="btn ghost">Clear</button>
+          <button id="deal" class="btn primary">Deal</button>
+          <button id="reset-bankroll" class="btn primary" hidden>Reset bankroll</button>
+        </div>
+      </div>
+
+      <div id="play-controls" class="control-row" hidden>
+        <div class="actions">
+          <button id="hit" class="btn primary" title="Shortcut: H">Hit</button>
+          <button id="stand" class="btn" title="Shortcut: S">Stand</button>
+          <button id="double" class="btn" title="Shortcut: D">Double</button>
+          <button id="split" class="btn" title="Shortcut: P">Split</button>
+        </div>
+      </div>
+
+      <p class="credit">
+        Cards dealt by the <a href="https://deckofcardsapi.com" target="_blank" rel="noopener">Deck of Cards API</a>
+      </p>
+    </footer>
+  </body>
+</html>
