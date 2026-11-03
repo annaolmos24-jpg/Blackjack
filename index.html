@@ -51,14 +51,94 @@
       </div>
     </div>
 
+    <nav id="tabs" class="tabs" role="tablist" aria-label="Sections" hidden>
+      <button id="tab-table" class="tab" role="tab" data-view="table" aria-controls="game-view" aria-selected="true">Table</button>
+      <button id="tab-profile" class="tab" role="tab" data-view="profile" aria-controls="profile-view" aria-selected="false">
+        Profile <span id="profile-dot" class="tab-dot" title="Profile not created yet" hidden></span>
+      </button>
+    </nav>
+
+    <section id="profile-view" class="profile-view" role="tabpanel" aria-labelledby="tab-profile" hidden>
+      <p id="profile-status" class="profile-status" role="status" hidden></p>
+
+      <article id="profile-card" class="profile-card" hidden>
+        <div class="pc-head">
+          <img id="pc-avatar" class="avatar xl" alt="" referrerpolicy="no-referrer" hidden />
+          <span id="pc-initial" class="avatar xl avatar-initial" aria-hidden="true"></span>
+          <div>
+            <h2 id="pc-name"></h2>
+            <p id="pc-username" class="pc-username"></p>
+          </div>
+        </div>
+        <p id="pc-bio" class="pc-bio"></p>
+        <p id="pc-suit" class="pc-suit" hidden></p>
+        <p id="pc-since" class="pc-since"></p>
+        <button id="pc-edit" class="btn">Edit profile</button>
+      </article>
+
+      <form id="profile-form" class="profile-form" novalidate hidden>
+        <h2 id="pf-title">Create your profile</h2>
+        <p id="pf-intro" class="pf-intro">Pick a username and tell the table a little about yourself. You can change any of this later.</p>
+
+        <div class="pf-avatar-row">
+          <img id="pf-avatar" class="avatar xl" alt="" referrerpolicy="no-referrer" hidden />
+          <span id="pf-initial" class="avatar xl avatar-initial" aria-hidden="true"></span>
+          <label class="pf-check">
+            <input id="pf-use-google-photo" type="checkbox" checked />
+            Use my Google photo
+          </label>
+        </div>
+
+        <div class="field">
+          <label for="pf-username">Username</label>
+          <div class="input-prefix">
+            <span aria-hidden="true">@</span>
+            <input id="pf-username" name="username" autocomplete="username" maxlength="20" spellcheck="false" aria-describedby="pf-username-hint pf-username-error" required />
+          </div>
+          <p id="pf-username-hint" class="hint">3–20 characters: letters, numbers and underscores.</p>
+          <p id="pf-username-error" class="field-error" data-error-for="username" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="pf-display-name">Display name</label>
+          <input id="pf-display-name" name="display_name" autocomplete="name" maxlength="40" aria-describedby="pf-display-name-error" required />
+          <p id="pf-display-name-error" class="field-error" data-error-for="display_name" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="pf-bio">Bio <span class="optional">(optional)</span></label>
+          <textarea id="pf-bio" name="bio" rows="3" maxlength="160" placeholder="Always split aces. Never take insurance." aria-describedby="pf-bio-count pf-bio-error"></textarea>
+          <p id="pf-bio-count" class="hint align-end">0 / 160</p>
+          <p id="pf-bio-error" class="field-error" data-error-for="bio" hidden></p>
+        </div>
+
+        <fieldset class="field suits">
+          <legend>Favorite suit <span class="optional">(optional)</span></legend>
+          <label class="suit-option"><input type="radio" name="favorite_suit" value="spades" /><span>♠</span> Spades</label>
+          <label class="suit-option red"><input type="radio" name="favorite_suit" value="hearts" /><span>♥</span> Hearts</label>
+          <label class="suit-option red"><input type="radio" name="favorite_suit" value="diamonds" /><span>♦</span> Diamonds</label>
+          <label class="suit-option"><input type="radio" name="favorite_suit" value="clubs" /><span>♣</span> Clubs</label>
+          <label class="suit-option"><input type="radio" name="favorite_suit" value="" checked /> None</label>
+        </fieldset>
+
+        <p id="pf-error" class="form-error" role="alert" hidden></p>
+
+        <div class="pf-actions">
+          <button id="pf-cancel" type="button" class="btn ghost" hidden>Cancel</button>
+          <button id="pf-save" type="submit" class="btn primary">Create profile</button>
+        </div>
+      </form>
+    </section>
+
     <div id="greeting" class="greeting" role="status" hidden>
       <img id="greeting-avatar" class="avatar large" alt="" referrerpolicy="no-referrer" hidden />
       <span id="greeting-initial" class="avatar large avatar-initial" aria-hidden="true"></span>
       <p id="greeting-text"></p>
+      <button id="greeting-action" class="btn primary small" hidden>Create profile</button>
       <button id="greeting-close" class="greeting-close" aria-label="Dismiss greeting">×</button>
     </div>
 
-    <main class="table">
+    <main id="game-view" class="table" role="tabpanel" aria-labelledby="tab-table">
       <section class="seat dealer" aria-label="Dealer">
         <div class="seat-head">
           <h2>Dealer</h2>

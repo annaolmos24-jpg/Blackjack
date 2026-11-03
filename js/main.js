@@ -16,6 +16,7 @@ import {
   watchAuth,
   cleanAuthParamsFromUrl,
 } from "./auth.js";
+import { setupProfileView, loadProfileFor, clearProfileView } from "./profile-view.js";
 
 const STARTING_BANKROLL = 1000;
 const BANKROLL_KEY_PREFIX = "blackjack.bankroll"; // one bankroll per signed-in player
@@ -54,6 +55,11 @@ const els = {
   greetingInitial: $("#greeting-initial"),
   greetingText: $("#greeting-text"),
   greetingClose: $("#greeting-close"),
+  greetingAction: $("#greeting-action"),
+  tabs: $("#tabs"),
+  tabButtons: document.querySelectorAll("#tabs [data-view]"),
+  profileView: $("#profile-view"),
+  profileDot: $("#profile-dot"),
 };
 
 const shoe = new Shoe();
@@ -469,7 +475,7 @@ els.reset.addEventListener("click", resetBankroll);
 
 document.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
-  if (document.body.dataset.auth !== "signed-in") return;
+  if (document.body.dataset.auth !== "signed-in" || document.body.dataset.view === "profile") return;
   const key = e.key.toLowerCase();
   const actions = { h: hit, s: stand, d: doubleDown, p: split };
   if (state.phase === "player" && actions[key]) {
@@ -508,7 +514,47 @@ function showGreeting(profile, isNewSession) {
   els.greetingText.textContent = isNewSession
     ? `Welcome, ${profile.firstName}! Pull up a seat — the table is yours.`
     : `Welcome back, ${profile.firstName}! Good luck at the table.`;
+  els.greetingAction.hidden = true;
   els.greeting.hidden = false;
+}
+
+/* ---------- tabs & player profile ---------- */
+
+function setView(view) {
+  document.body.dataset.view = view;
+  els.profileView.hidden = view !== "profile";
+  els.tabButtons.forEach((tab) => {
+    tab.setAttribute("aria-selected", String(tab.dataset.view === view));
+  });
+}
+
+/** Reflect the saved profile (or its absence) in the header and greeting. */
+function applyProfile(row, authProfile) {
+  if (row) {
+    const shown = { firstName: row.display_name, fullName: row.display_name, avatarUrl: row.avatar_url };
+    els.userName.textContent = row.display_name;
+    els.userChip.title = `@${row.username}`;
+    showAvatar(els.userAvatar, els.userInitial, shown);
+    els.profileDot.hidden = true;
+    els.greetingAction.hidden = true;
+    return;
+  }
+  els.profileDot.hidden = false;
+  els.greetingText.textContent = `Welcome, ${authProfile.firstName}! Create your profile to claim a username and take your seat.`;
+  els.greetingAction.hidden = false;
+  els.greeting.hidden = false;
+}
+
+let currentAuthProfile = null;
+
+async function loadPlayerProfile(authProfile) {
+  try {
+    const row = await loadProfileFor(authProfile);
+    if (currentAuthProfile?.id !== authProfile.id) return; // signed out meanwhile
+    applyProfile(row, authProfile);
+  } catch {
+    /* the Profile tab shows the error */
+  }
 }
 
 function setLoginError(text) {
@@ -526,9 +572,11 @@ async function onSignedIn(user) {
   els.userChip.title = profile.email;
   showAvatar(els.userAvatar, els.userInitial, profile);
   els.userChip.hidden = false;
+  els.tabs.hidden = false;
 
   if (!switchedUser) return;
   state.userId = profile.id;
+  currentAuthProfile = profile;
   let isNew = false;
   try {
     isNew = localStorage.getItem(bankrollKey()) === null;
@@ -540,7 +588,9 @@ async function onSignedIn(user) {
   state.lastBet = 0;
   clearTable();
   showGreeting(profile, isNew);
+  setView("table");
   render();
+  loadPlayerProfile(profile);
 
   shoeReady ??= openShoe();
   await shoeReady;
@@ -554,6 +604,11 @@ function onSignedOut() {
     saveBankroll();
   }
   state.userId = null;
+  currentAuthProfile = null;
+  clearProfileView();
+  setView("table");
+  els.tabs.hidden = true;
+  els.profileDot.hidden = true;
   document.body.dataset.auth = "signed-out";
   els.userChip.hidden = true;
   els.greeting.hidden = true;
@@ -603,7 +658,22 @@ els.greetingClose.addEventListener("click", () => {
   els.greeting.hidden = true;
 });
 
+els.greetingAction.addEventListener("click", () => {
+  els.greeting.hidden = true;
+  setView("profile");
+});
+
+els.tabButtons.forEach((tab) => tab.addEventListener("click", () => setView(tab.dataset.view)));
+
+setupProfileView({
+  onProfileChange(row, { created }) {
+    applyProfile(row, currentAuthProfile);
+    if (created) els.greeting.hidden = true;
+  },
+});
+
 function init() {
+  setView("table");
   render();
   document.body.dataset.auth = "loading";
 
