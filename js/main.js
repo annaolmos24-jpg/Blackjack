@@ -8,9 +8,17 @@ import {
   settleHand,
   MAX_HANDS,
 } from "./rules.js";
+import {
+  isConfigured,
+  signInWithGoogle,
+  signOut,
+  profileOf,
+  watchAuth,
+  cleanAuthParamsFromUrl,
+} from "./auth.js";
 
 const STARTING_BANKROLL = 1000;
-const BANKROLL_KEY = "blackjack.bankroll";
+const BANKROLL_KEY_PREFIX = "blackjack.bankroll"; // one bankroll per signed-in player
 const RESHUFFLE_AT = Math.floor(SHOE_SIZE * 0.25); // cut card at 75% penetration
 const DEALER_DELAY_MS = 650;
 
@@ -33,13 +41,27 @@ const els = {
   double: $("#double"),
   split: $("#split"),
   reset: $("#reset-bankroll"),
+  loginScreen: $("#login-screen"),
+  loginButton: $("#google-login"),
+  loginError: $("#login-error"),
+  userChip: $("#user-chip"),
+  userName: $("#user-name"),
+  userAvatar: $("#user-avatar"),
+  userInitial: $("#user-initial"),
+  signOut: $("#sign-out"),
+  greeting: $("#greeting"),
+  greetingAvatar: $("#greeting-avatar"),
+  greetingInitial: $("#greeting-initial"),
+  greetingText: $("#greeting-text"),
+  greetingClose: $("#greeting-close"),
 };
 
 const shoe = new Shoe();
 
 const state = {
   phase: "loading", // loading | betting | player | dealer | busy
-  bankroll: loadBankroll(),
+  bankroll: STARTING_BANKROLL,
+  userId: null,
   bet: 0,
   lastBet: 0,
   dealer: [],
@@ -50,9 +72,14 @@ const state = {
 
 /* ---------- persistence ---------- */
 
+function bankrollKey() {
+  return `${BANKROLL_KEY_PREFIX}.${state.userId ?? "guest"}`;
+}
+
 function loadBankroll() {
   try {
-    const saved = Number(localStorage.getItem(BANKROLL_KEY));
+    const raw = localStorage.getItem(bankrollKey());
+    const saved = raw === null ? NaN : Number(raw);
     return Number.isFinite(saved) && saved > 0 ? saved : STARTING_BANKROLL;
   } catch {
     return STARTING_BANKROLL;
@@ -61,7 +88,7 @@ function loadBankroll() {
 
 function saveBankroll() {
   try {
-    localStorage.setItem(BANKROLL_KEY, String(state.bankroll));
+    localStorage.setItem(bankrollKey(), String(state.bankroll));
   } catch {
     /* ignore */
   }
@@ -442,6 +469,7 @@ els.reset.addEventListener("click", resetBankroll);
 
 document.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+  if (document.body.dataset.auth !== "signed-in") return;
   const key = e.key.toLowerCase();
   const actions = { h: hit, s: stand, d: doubleDown, p: split };
   if (state.phase === "player" && actions[key]) {
@@ -454,9 +482,88 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-async function init() {
+/* ---------- sign-in ---------- */
+
+let shoeReady = null; // opened once, on first sign-in
+
+function showAvatar(img, initialEl, profile) {
+  initialEl.textContent = profile.firstName.charAt(0).toUpperCase();
+  if (!profile.avatarUrl) {
+    img.hidden = true;
+    initialEl.hidden = false;
+    return;
+  }
+  img.hidden = false;
+  initialEl.hidden = true;
+  img.onerror = () => {
+    img.hidden = true;
+    initialEl.hidden = false;
+  };
+  img.src = profile.avatarUrl;
+  img.alt = profile.fullName;
+}
+
+function showGreeting(profile, isNewSession) {
+  showAvatar(els.greetingAvatar, els.greetingInitial, profile);
+  els.greetingText.textContent = isNewSession
+    ? `Welcome, ${profile.firstName}! Pull up a seat — the table is yours.`
+    : `Welcome back, ${profile.firstName}! Good luck at the table.`;
+  els.greeting.hidden = false;
+}
+
+function setLoginError(text) {
+  els.loginError.textContent = text;
+  els.loginError.hidden = !text;
+}
+
+async function onSignedIn(user) {
+  const profile = profileOf(user);
+  const switchedUser = state.userId !== profile.id;
+  document.body.dataset.auth = "signed-in";
+  els.loginScreen.hidden = true;
+
+  els.userName.textContent = profile.fullName;
+  els.userChip.title = profile.email;
+  showAvatar(els.userAvatar, els.userInitial, profile);
+  els.userChip.hidden = false;
+
+  if (!switchedUser) return;
+  state.userId = profile.id;
+  let isNew = false;
+  try {
+    isNew = localStorage.getItem(bankrollKey()) === null;
+  } catch {
+    /* ignore */
+  }
+  state.bankroll = loadBankroll();
+  state.bet = 0;
+  state.lastBet = 0;
+  clearTable();
+  showGreeting(profile, isNew);
   render();
+
+  shoeReady ??= openShoe();
+  await shoeReady;
+}
+
+function onSignedOut() {
+  // Put any chips sitting in the betting circle back before leaving.
+  if (state.phase === "betting" && state.bet) {
+    state.bankroll += state.bet;
+    state.bet = 0;
+    saveBankroll();
+  }
+  state.userId = null;
+  document.body.dataset.auth = "signed-out";
+  els.userChip.hidden = true;
+  els.greeting.hidden = true;
+  els.loginScreen.hidden = false;
+  els.loginButton.disabled = false;
+}
+
+async function openShoe() {
   setMessage("Opening a fresh 6-deck shoe…");
+  render();
   try {
     await shoe.open();
     state.phase = "betting";
@@ -466,6 +573,61 @@ async function init() {
     setMessage(`${err.message} Reload the page to retry.`, "error");
   }
   render();
+}
+
+els.loginButton.addEventListener("click", async () => {
+  els.loginButton.disabled = true;
+  setLoginError("");
+  try {
+    await signInWithGoogle(); // navigates away to Google
+  } catch (err) {
+    console.error(err);
+    setLoginError(err.message || "Couldn't start Google sign-in.");
+    els.loginButton.disabled = false;
+  }
+});
+
+els.signOut.addEventListener("click", async () => {
+  if (state.phase === "player" || state.phase === "dealer" || state.phase === "busy") {
+    if (!confirm("You're in the middle of a hand — that bet will be lost. Sign out anyway?")) return;
+  }
+  try {
+    await signOut();
+  } catch (err) {
+    console.error(err);
+    onSignedOut(); // local session is cleared either way
+  }
+});
+
+els.greetingClose.addEventListener("click", () => {
+  els.greeting.hidden = true;
+});
+
+function init() {
+  render();
+  document.body.dataset.auth = "loading";
+
+  // Errors Google/Supabase send back, e.g. ?error_description=...
+  const params = new URLSearchParams(window.location.search + "&" + window.location.hash.slice(1));
+  const authError = params.get("error_description");
+
+  if (!isConfigured) {
+    document.body.dataset.auth = "signed-out";
+    els.loginScreen.hidden = false;
+    els.loginButton.disabled = true;
+    setLoginError("Sign-in isn't set up yet: add your Supabase publishable key to js/config.js.");
+    return;
+  }
+
+  watchAuth((user) => {
+    cleanAuthParamsFromUrl();
+    if (user) {
+      onSignedIn(user);
+    } else {
+      onSignedOut();
+      if (authError) setLoginError(`Sign-in failed: ${authError}`);
+    }
+  });
 }
 
 init();

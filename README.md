@@ -13,6 +13,30 @@ framework and no build step, so it deploys to Netlify as a static site.
 - Bankroll and shoe are saved in your browser, so a refresh doesn't lose your game
 - Keyboard shortcuts: **H** hit, **S** stand, **D** double, **P** split, **Enter** deal
 
+## Sign in with Google (Supabase)
+
+Players sign in with Google through Supabase Auth before they can sit at the table. Once
+signed in, the header shows their Google name and profile photo, a greeting welcomes them,
+and each player gets their own saved bankroll.
+
+Setup checklist:
+
+1. **Publishable key** — paste it into `js/config.js` (`SUPABASE_PUBLISHABLE_KEY`). Find it in
+   Supabase → Project Settings → API Keys. It is meant to be public, so committing it is fine.
+2. **Google provider** — Supabase → Authentication → Sign In / Providers → Google: enabled, with
+   your Google OAuth Client ID and Secret.
+3. **Google Cloud Console** — on that OAuth client, *Authorized redirect URIs* must include
+   `https://xpohmzyqtwqkwdmxgakg.supabase.co/auth/v1/callback`.
+4. **Redirect URLs** — Supabase → Authentication → URL Configuration. Set the Site URL to your main
+   address and add every address the game runs on to *Redirect URLs*, e.g.
+   - `https://annaolmos24-jpg.github.io/Blackjack/`
+   - your Netlify URL, e.g. `https://<your-site>.netlify.app/`
+   - `http://localhost:3000/` for local testing
+
+   If an address is missing, Supabase sends people to the Site URL instead after sign-in.
+5. **Publish the Google consent screen** — while the Google Cloud app is in *Testing*, only the
+   test users you list can sign in. Set it to *In production* so anyone can log in.
+
 ## How it uses the API
 
 | What                    | Endpoint                                  |
@@ -33,6 +57,8 @@ css/style.css     table styling (responsive down to phone width)
 js/rules.js       pure Blackjack rules — no DOM or network
 js/api.js         Deck of Cards API wrapper (the Shoe class)
 js/main.js        game flow, rendering and controls
+js/auth.js        Google sign-in via Supabase Auth
+js/config.js      Supabase URL + publishable key
 tests/            unit tests for the rules
 netlify.toml      Netlify config (publish the repo root, no build)
 ```
