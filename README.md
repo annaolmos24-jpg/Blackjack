@@ -53,6 +53,13 @@ Run the rules tests (Node 18+):
 npm test
 ```
 
+## Deploy to GitHub Pages
+
+Every push to `main` runs the tests and publishes the game with
+`.github/workflows/pages.yml`. One-time setup: in the repo go to
+**Settings → Pages** and set **Source** to **GitHub Actions**. The game is then live at
+<https://annaolmos24-jpg.github.io/Blackjack/>.
+
 ## Deploy to Netlify
 
 1. In Netlify choose **Add new site → Import an existing project** and pick this GitHub repo.
