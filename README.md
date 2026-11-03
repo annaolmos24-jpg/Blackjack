@@ -37,6 +37,20 @@ Setup checklist:
 5. **Publish the Google consent screen** — while the Google Cloud app is in *Testing*, only the
    test users you list can sign in. Set it to *In production* so anyone can log in.
 
+## Player profiles
+
+Signed-in players get a **Profile** tab. The first time they sign in, they're asked to create a
+profile: username (unique, 3–20 letters/numbers/underscores), display name, an optional bio and
+favorite suit, and whether to use their Google photo. After that the tab shows their profile
+card with an **Edit profile** button, and the header shows their display name.
+
+Profiles live in the `public.profiles` table in Supabase. **One-time setup:** open Supabase →
+SQL Editor → New query, paste in
+[`supabase/migrations/20261103000000_create_profiles.sql`](supabase/migrations/20261103000000_create_profiles.sql)
+and click **Run**. It creates the table and its Row Level Security rules. Signed-in players can
+view profiles, but each player can only create, edit or delete their own. Signed-out visitors
+can't read any.
+
 ## How it uses the API
 
 | What                    | Endpoint                                  |
@@ -59,6 +73,10 @@ js/api.js         Deck of Cards API wrapper (the Shoe class)
 js/main.js        game flow, rendering and controls
 js/auth.js        Google sign-in via Supabase Auth
 js/config.js      Supabase URL + publishable key
+js/profiles.js    read/save the player's row in public.profiles
+js/profile-view.js  the Profile tab (create form + profile card)
+js/profile-validation.js  profile form rules (mirrors the database checks)
+supabase/migrations/  SQL to create the profiles table
 tests/            unit tests for the rules
 netlify.toml      Netlify config (publish the repo root, no build)
 ```
